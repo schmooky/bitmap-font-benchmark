@@ -9,8 +9,10 @@ class BitmapPreviewer {
     private pane: Pane | null = null; // Tweakpane instance
     private options = {
         start: 0,
+        value: 0,
         end: 100,
-        fontSize: 40, // Font size (newly added!)
+        fontSize: 40,
+        format: false, // Toggle for USD formatting
     };
     private ticker: gsap.core.Tween | null = null;
 
@@ -102,6 +104,13 @@ class BitmapPreviewer {
         });
     }
 
+    private formatNumber(value: number): string {
+        if (this.options.format) {
+            return value.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+        }
+        return value.toString();
+    }
+
     private updateBitmapText(): void {
         if (this.bitmapText) {
             this.app.stage.removeChild(this.bitmapText);
@@ -118,6 +127,14 @@ class BitmapPreviewer {
                 this.app.renderer.height / 2
             );
             this.app.stage.addChild(this.bitmapText);
+            this.updateDisplayedText(); // Update text based on format
+        }
+    }
+
+    private updateDisplayedText(): void {
+        if (this.bitmapText) {
+            this.bitmapText.text = this.formatNumber(this.options.value)
+            ;
         }
     }
 
@@ -131,14 +148,17 @@ class BitmapPreviewer {
         const PARAMS = this.options;
 
         this.pane.addBinding(PARAMS, 'start', {
-            min: -100,
-            max: 100,
+            min: 0,
+            max: 1_000_000,
             step: 1,
+        }).on('change', () => {
+            this.options.value = this.options.start;
+            this.updateDisplayedText(); // Update text dynamically
         });
 
         this.pane.addBinding(PARAMS, 'end', {
-            min: -100,
-            max: 100,
+            min: 0,
+            max: 1_000_000,
             step: 1,
         });
 
@@ -150,6 +170,12 @@ class BitmapPreviewer {
             })
             .on('change', () => {
                 this.updateBitmapText(); // Update font size dynamically
+            });
+
+        this.pane
+            .addBinding(PARAMS, 'format') // Add USD formatting toggle
+            .on('change', () => {
+                this.updateDisplayedText(); // Update text when toggled
             });
 
         // Add start and stop buttons
@@ -167,14 +193,12 @@ class BitmapPreviewer {
 
         if (this.bitmapText && this.currentFontName) {
             this.ticker = gsap.to(this.options, {
-                start: this.options.end,
+                value: this.options.end,
                 duration: 2,
                 repeat: -1,
                 ease: 'linear',
                 onUpdate: () => {
-                    if (this.bitmapText) {
-                        this.bitmapText.text = Math.floor(this.options.start).toString();
-                    }
+                    this.updateDisplayedText(); // Update the number during tick
                 },
             });
         }
@@ -184,6 +208,7 @@ class BitmapPreviewer {
         if (this.ticker) {
             this.ticker.kill();
             this.ticker = null;
+            this.options.value = this.options.start;
         }
     }
 }
