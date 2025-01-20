@@ -13,6 +13,7 @@ class BitmapPreviewer {
         end: 100,
         fontSize: 40,
         format: false, // Toggle for USD formatting
+        duration: 2,
     };
     private ticker: gsap.core.Tween | null = null;
 
@@ -178,6 +179,16 @@ class BitmapPreviewer {
                 this.updateDisplayedText(); // Update text when toggled
             });
 
+        this.pane
+            .addBinding(PARAMS, 'duration', {
+                min: 0.2,
+                max: 5,
+                step: 0.1,
+            })
+            .on('change', () => {
+                this.updateBitmapText(); // Update font size dynamically
+            });
+
         // Add start and stop buttons
         this.pane.addButton({ title: 'Start Tickup' }).on('click', () => {
             this.startTickup();
@@ -194,8 +205,7 @@ class BitmapPreviewer {
         if (this.bitmapText && this.currentFontName) {
             this.ticker = gsap.to(this.options, {
                 value: this.options.end,
-                duration: 2,
-                repeat: -1,
+                duration: this.options.duration,
                 ease: 'linear',
                 onUpdate: () => {
                     this.updateDisplayedText(); // Update the number during tick
