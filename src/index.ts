@@ -251,11 +251,15 @@ class BitmapPreviewer {
 
     console.log("Font Data", fontData);
 
-    // Calculate the maximum advance for consistent spacing
+    // Maximum advance is calculated for future use
     let maxAdvance = 0;
     for (let charCode in fontData.chars) {
       maxAdvance = Math.max(maxAdvance, fontData.chars[charCode].xAdvance);
     }
+    console.log("Max xAdvance:", maxAdvance);
+
+    // Container for glyph adjustments
+    let adjustmentRequired = false;
 
     // Iterate through number combinations from 10 to 99
     for (let number = 10; number < 100; number++) {
@@ -264,31 +268,43 @@ class BitmapPreviewer {
       // Render the string and calculate bounds
       this.bitmapText.text = testString;
       this.app.renderer.render(this.app.stage);
-      await this.sleep(500); // Adjust delay as needed for visualization
+      await this.sleep(24); // Pause for visualization (adjust duration as needed)
 
       const bounds = this.bitmapText.getBounds();
 
-      console.log(
-        `%cString: '${testString}'`,
-        "color: lightblue; font-weight: bold;"
-      );
+      console.log(`%cString: '${testString}'`, "color: lightblue; font-weight: bold;");
       console.log(`    Bounds: ${JSON.stringify(bounds)}`);
 
       // Calculate expected width based on maximum advance
-      const expectedWidth = testString.length * maxAdvance; 
-
+      const expectedWidth = testString.length * maxAdvance;
       console.log(`    Expected Width: ${expectedWidth}`);
 
-      // Test for width discrepancies
-      if (Math.abs(bounds.width - expectedWidth) > 1) {
-        // Allow small deviations
+      // Check for width discrepancies
+      const widthDiscrepancy = Math.abs(bounds.width - expectedWidth);
+      if (widthDiscrepancy > 1) {
         console.warn(
           `%cPotential width mismatch detected for '${testString}':`,
           "color: yellow; font-weight: bold;"
         );
         console.log(
-          `    ➡ The rendered width (${bounds.width}) does not match the expected width (${expectedWidth}) based on maximum glyph 'xAdvance' value.`
+          `    ➡ Rendered width (${bounds.width}) does not match expected width (${expectedWidth}).`
         );
+
+        adjustmentRequired = true;
+
+        // Optional: Suggest adjustments or fix xAdvance for glyphs
+        for (const digit of testString) {
+          const charCode = digit.charCodeAt(0);
+          const glyph = fontData.chars[charCode];
+          if (glyph) {
+            // Adjust xAdvance to better fit expected bounds
+            glyph.xAdvance = maxAdvance;
+            console.log(
+              `%cAdjusted xAdvance for character '${digit}' to ${maxAdvance}.`,
+              "color: yellow;"
+            );
+          }
+        }
       } else {
         console.log(
           `%cNo width mismatch detected for '${testString}'.`,
@@ -299,9 +315,34 @@ class BitmapPreviewer {
 
     console.groupEnd();
 
+    // Apply adjustments to the text after benchmarking
+    if (adjustmentRequired) {
+      console.group("%cApplying Adjustments to Font Data", "color: orange;");
+    //   this.correctFontDataNumericGlyphs(fontData, maxAdvance);
+      console.groupEnd();
+    }
+
     // Reset the text after testing
     this.bitmapText.text = "";
     this.app.renderer.render(this.app.stage); // Clear the stage
+  }
+
+  /** Correct xAdvance specifically for numeric glyphs */
+  private correctFontDataNumericGlyphs(fontData: PIXI.BitmapFont, xAdvance: number): void {
+    console.log("%cCorrecting Numeric Glyphs...", "color: orange; font-weight: bold;");
+    for (let i = 48; i <= 57; i++) { // ASCII '0' to '9'
+      const glyph = fontData.chars[i];
+      if (glyph) {
+        glyph.xAdvance = xAdvance;
+
+        // Optional: Recalculate or normalize other glyph properties if needed
+        glyph.xAdvance = xAdvance; // This might also need correction depending on other mismatches
+        glyph.xOffset = 0; // Optional adjustment to ensure proper alignment
+        glyph.yOffset = 0; // Optional adjustment for vertical alignment
+
+        console.log(`Corrected glyph for '${String.fromCharCode(i)}':`, glyph);
+      }
+    }
   }
 
   private sleep(ms: number): Promise<void> {
