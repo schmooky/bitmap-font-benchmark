@@ -63,6 +63,8 @@ class BitmapPreviewer {
 
                 // Initialize Tweakpane after font is loaded
                 this.initTweakpane();
+                // Perform digit testing
+                this.performDigitTesting();
             }
         });
 
@@ -124,8 +126,8 @@ class BitmapPreviewer {
             });
             this.bitmapText.anchor.set(0.5);
             this.bitmapText.position.set(
-                this.app.renderer.width / 2,
-                this.app.renderer.height / 2
+                Math.floor(this.app.renderer.width / 2),
+                Math.floor(this.app.renderer.height / 2)
             );
             this.app.stage.addChild(this.bitmapText);
             this.updateDisplayedText(); // Update text based on format
@@ -134,8 +136,7 @@ class BitmapPreviewer {
 
     private updateDisplayedText(): void {
         if (this.bitmapText) {
-            this.bitmapText.text = this.formatNumber(this.options.value)
-            ;
+            this.bitmapText.text = this.formatNumber(this.options.value);
         }
     }
 
@@ -221,7 +222,99 @@ class BitmapPreviewer {
             this.options.value = this.options.start;
         }
     }
+
+    private async performDigitTesting(): Promise<void> {
+        if (!this.bitmapText || !this.currentFontName) return;
+    
+        console.group("Arabic Digit Testing");
+    
+        const fontData = PIXI.BitmapFont.available[this.currentFontName];
+        if (!fontData) {
+            console.warn("Font data not found for the current loaded font.");
+            return;
+        }
+
+        console.log('Font Data', fontData)
+    
+        // Iterate through Arabic numerals (0–9)
+        for (let charCode = 48; charCode <= 57; charCode++) {
+            const testCharacter = String.fromCharCode(charCode);
+    
+            // Render the character and calculate bounds
+            this.bitmapText.text = testCharacter;
+            this.app.renderer.render(this.app.stage); // Ensure correct boundary calculation
+            await this.sleep(500);
+    
+            const bounds = this.bitmapText.getBounds();
+            const glyph = fontData.chars[charCode];
+    
+            if (!this.bitmapText.width) {
+                console.warn(`Glyph not found for character: '${testCharacter}'`);
+                continue;
+            }
+    
+            const { xOffset, xAdvance, texture, yOffset } = glyph;
+            const textureWidth = texture.width;
+            const textureHeight = texture.height;
+    
+            const spacingIssue =
+                bounds.width !== xAdvance ||
+                Math.abs(bounds.x - xOffset) > 1; // Allow small deviations due to potential rendering quirks
+    
+            console.log(
+                `%cCharacter: '${testCharacter}'`,
+                "color: lightblue; font-weight: bold;"
+            );
+            console.log(`    Bounds: ${JSON.stringify(bounds)}`);
+            console.log(
+                `    Glyph Data: xOffset=${xOffset}, xAdvance=${xAdvance}, yOffset=${yOffset}, textureSize=[${textureWidth}x${textureHeight}]`
+            );
+    
+            // Test alignment issues
+            if (spacingIssue) {
+                console.warn(
+                    `%cPotential issue detected with '${testCharacter}':`,
+                    "color: yellow; font-weight: bold;"
+                );
+    
+                // Log suggested corrections
+                if (bounds.width > xAdvance) {
+                    console.log(
+                        `    ➡ Consider increasing 'xAdvance' for '${testCharacter}' by ${bounds.width - xAdvance} to match the actual bounds width.`
+                    );
+                } else if (bounds.width < xAdvance) {
+                    console.log(
+                        `    ➡ Consider decreasing 'xAdvance' for '${testCharacter}' by ${
+                            xAdvance - bounds.width
+                        } to avoid extra spacing.`
+                    );
+                }
+                if (Math.abs(bounds.x - xOffset) > 1) {
+                    console.log(
+                        `    ➡ Adjust 'xOffset' for '${testCharacter}' by ${
+                            bounds.x - xOffset
+                        } to align the character correctly.`
+                    );
+                }
+            } else {
+                console.log(
+                    `%cNo spacing or alignment issue detected for '${testCharacter}'.`,
+                    "color: green;"
+                );
+            }
+        }
+    
+        console.groupEnd();
+    
+        // Reset the text after testing
+        this.bitmapText.text = "";
+        this.app.renderer.render(this.app.stage); // Clear the stage
+    }
+    
+    private sleep(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
 }
 
-// Initialize the application
-const previewer = new BitmapPreviewer();
+// Initialize the Bitmap Previewer incremental
+const preview = new BitmapPreviewer();
