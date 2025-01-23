@@ -12,6 +12,7 @@ class BitmapPreviewer {
     value: 0,
     end: 100,
     fontSize: 40,
+    letterSpacing: 0, // Default letterSpacing
     format: false, // Toggle for USD formatting
     duration: 2,
   };
@@ -140,6 +141,7 @@ class BitmapPreviewer {
       this.bitmapText = new PIXI.BitmapText("0", {
         fontName: this.currentFontName,
         fontSize: this.options.fontSize,
+        letterSpacing: this.options.letterSpacing, // Apply letterSpacing option
       });
       this.bitmapText.anchor.set(0.5);
       this.bitmapText.position.set(
@@ -164,6 +166,9 @@ class BitmapPreviewer {
   private updateDisplayedText(): void {
     if (this.bitmapText) {
       this.bitmapText.text = this.formatNumber(this.options.value);
+
+      // Update letter spacing dynamically
+      this.bitmapText.letterSpacing = this.options.letterSpacing;
 
       // Redraw the bounding box after the text is updated
       this.drawBoundingBox();
@@ -203,7 +208,7 @@ class BitmapPreviewer {
       })
       .on("change", () => {
         this.options.value = this.options.start;
-        this.updateDisplayedText(); // Update text dynamically
+        this.updateDisplayedText();
         this.saveOptionsToLocalStorage();
       });
 
@@ -222,14 +227,25 @@ class BitmapPreviewer {
         step: 1,
       })
       .on("change", () => {
-        this.updateBitmapText(); // Update font size dynamically
+        this.updateBitmapText();
+        this.saveOptionsToLocalStorage();
+      });
+
+    this.pane
+      .addBinding(PARAMS, "letterSpacing", {
+        min: -120,
+        max: 120,
+        step: 1,
+      })
+      .on("change", () => {
+        this.updateDisplayedText(); // Update letter spacing dynamically
         this.saveOptionsToLocalStorage();
       });
 
     this.pane
       .addBinding(PARAMS, "format") // Add USD formatting toggle
       .on("change", () => {
-        this.updateDisplayedText(); // Update text when toggled
+        this.updateDisplayedText();
         this.saveOptionsToLocalStorage();
       });
 
@@ -260,7 +276,7 @@ class BitmapPreviewer {
         duration: this.options.duration,
         ease: "linear",
         onUpdate: () => {
-          this.updateDisplayedText(); // Update the number during tick
+          this.updateDisplayedText();
         },
       });
     }
@@ -275,7 +291,16 @@ class BitmapPreviewer {
   }
 
   private saveOptionsToLocalStorage(): void {
-    localStorage.setItem("tweakpane-options", JSON.stringify(this.options));
+    localStorage.setItem(
+      "tweakpane-options",
+      JSON.stringify(this.options, (key, value) => {
+        // Exclude _gsap properties
+        if (key === "_gsap") {
+          return undefined;
+        }
+        return value; // Keep everything else
+      })
+    );
   }
 
   private loadOptionsFromLocalStorage(): void {
@@ -286,5 +311,5 @@ class BitmapPreviewer {
   }
 }
 
-// Initialize the Bitmap Previewer incremental
+// Initialize the Bitmap Previewer
 const preview = new BitmapPreviewer();
