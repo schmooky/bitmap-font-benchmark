@@ -25,6 +25,9 @@ class BitmapPreviewer {
       view: document.getElementById("pixiCanvas")! as HTMLCanvasElement,
     });
 
+    // Restore saved options from localStorage
+    this.loadOptionsFromLocalStorage();
+
     // Set up event listeners
     this.setupEventListeners();
   }
@@ -47,21 +50,19 @@ class BitmapPreviewer {
       dropArea.classList.remove("highlight");
       document.getElementById("dropArea")!.remove();
       const files = Array.from(e.dataTransfer?.files || []);
-      const fntFile = files.find((file) => file.name.endsWith(".fnt"));
+      const fontFile = files.find((file) => /\.(fnt|xml)$/i.test(file.name));
       const imageFiles = files.filter((file) =>
         /\.(png|jpg|jpeg|webp)$/i.test(file.name)
       );
 
-      if (fntFile && imageFiles.length > 0) {
-        await this.loadBitmapFont(fntFile, imageFiles);
+      if (fontFile && imageFiles.length > 0) {
+        await this.loadBitmapFont(fontFile, imageFiles);
 
         // Hide the drop area
         dropArea.style.opacity = "0";
         setTimeout(() => {
           dropArea.style.display = "none";
         }, 300);
-
-        this.performDigitTesting();
 
         // Initialize Tweakpane after font is loaded
         this.initTweakpane();
@@ -75,18 +76,11 @@ class BitmapPreviewer {
   }
 
   private async loadBitmapFont(
-    fntFile: File,
+    fontFile: File,
     imageFiles: File[]
   ): Promise<void> {
-    const fntData = await this.readFileAsText(fntFile);
     const textures: Record<string, PIXI.Texture> = {};
-
-    // Parse the fnt file to extract the size attribute
-    const sizeMatch = fntData.match(/size=(\d+)/);
-    if (sizeMatch) {
-      // Set the extracted font size as the default value for options.fontSize
-      this.options.fontSize = parseInt(sizeMatch[1], 10);
-    }
+    let fntData: string = await this.readFileAsText(fontFile);
 
     for (const imageFile of imageFiles) {
       const imageData = await this.readFileAsDataURL(imageFile);
@@ -97,6 +91,10 @@ class BitmapPreviewer {
     this.currentFontName = font.font;
 
     this.updateBitmapText();
+
+    setTimeout(() => {
+      this.updateDisplayedText(); // Update text based on format
+    }, 0);
   }
 
   private async readFileAsText(file: File): Promise<string> {
@@ -130,62 +128,62 @@ class BitmapPreviewer {
   private boundingBox: PIXI.Graphics | null = null;
 
   private updateBitmapText(): void {
-      if (this.bitmapText) {
-          this.app.stage.removeChild(this.bitmapText);
-      }
-      // Remove the previous bounding box
-      if (this.boundingBox) {
-          this.app.stage.removeChild(this.boundingBox);
-      }
-  
-      if (this.currentFontName) {
-          this.bitmapText = new PIXI.BitmapText("0", {
-              fontName: this.currentFontName,
-              fontSize: this.options.fontSize,
-          });
-          this.bitmapText.anchor.set(0.5);
-          this.bitmapText.position.set(
-              Math.floor(this.app.renderer.width / 2),
-              Math.floor(this.app.renderer.height / 2)
-          );
-  
-          // Add the bitmap text to the stage
-          this.app.stage.addChild(this.bitmapText);
-  
-          // Create and add the bounding box
-          this.boundingBox = new PIXI.Graphics();
-          this.app.stage.addChild(this.boundingBox);
-  
-          // Draw the bounding box around the updated text
-          this.drawBoundingBox();
-  
-          this.updateDisplayedText(); // Update text based on format
-      }
+    if (this.bitmapText) {
+      this.app.stage.removeChild(this.bitmapText);
+    }
+    // Remove the previous bounding box
+    if (this.boundingBox) {
+      this.app.stage.removeChild(this.boundingBox);
+    }
+
+    if (this.currentFontName) {
+      this.bitmapText = new PIXI.BitmapText("0", {
+        fontName: this.currentFontName,
+        fontSize: this.options.fontSize,
+      });
+      this.bitmapText.anchor.set(0.5);
+      this.bitmapText.position.set(
+        Math.floor(this.app.renderer.width / 2),
+        Math.floor(this.app.renderer.height / 2)
+      );
+
+      // Add the bitmap text to the stage
+      this.app.stage.addChild(this.bitmapText);
+
+      // Create and add the bounding box
+      this.boundingBox = new PIXI.Graphics();
+      this.app.stage.addChild(this.boundingBox);
+
+      // Draw the bounding box around the updated text
+
+      this.updateDisplayedText(); // Update text based on format
+      this.drawBoundingBox();
+    }
   }
-  
+
   private updateDisplayedText(): void {
-      if (this.bitmapText) {
-          this.bitmapText.text = this.formatNumber(this.options.value);
-  
-          // Redraw the bounding box after the text is updated
-          this.drawBoundingBox();
-      }
+    if (this.bitmapText) {
+      this.bitmapText.text = this.formatNumber(this.options.value);
+
+      // Redraw the bounding box after the text is updated
+      this.drawBoundingBox();
+    }
   }
-  
+
   private drawBoundingBox(): void {
-      if (!this.bitmapText || !this.boundingBox) return;
-  
-      // Retrieve the bounding box of the BitmapText
-      const bounds = this.bitmapText.getBounds();
-  
-      // Clear previous bounding box graphics
-      this.boundingBox.clear();
-  
-      // Draw the bounding box as a rectangle
-      this.boundingBox.lineStyle(2, 0xff0000, 1); // Red outline, 2px width
-      this.boundingBox.beginFill(0x000000, 0); // Transparent fill
-      this.boundingBox.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
-      this.boundingBox.endFill();
+    if (!this.bitmapText || !this.boundingBox) return;
+
+    // Retrieve the bounding box of the BitmapText
+    const bounds = this.bitmapText.getBounds();
+
+    // Clear previous bounding box graphics
+    this.boundingBox.clear();
+
+    // Draw the bounding box as a rectangle
+    this.boundingBox.lineStyle(2, 0xff0000, 1); // Red outline, 2px width
+    this.boundingBox.beginFill(0x000000, 0); // Transparent fill
+    this.boundingBox.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    this.boundingBox.endFill();
   }
 
   private initTweakpane(): void {
@@ -206,13 +204,16 @@ class BitmapPreviewer {
       .on("change", () => {
         this.options.value = this.options.start;
         this.updateDisplayedText(); // Update text dynamically
+        this.saveOptionsToLocalStorage();
       });
 
-    this.pane.addBinding(PARAMS, "end", {
-      min: 0,
-      max: 1_000_000,
-      step: 1,
-    });
+    this.pane
+      .addBinding(PARAMS, "end", {
+        min: 0,
+        max: 1_000_000,
+        step: 1,
+      })
+      .on("change", () => this.saveOptionsToLocalStorage());
 
     this.pane
       .addBinding(PARAMS, "fontSize", {
@@ -222,12 +223,14 @@ class BitmapPreviewer {
       })
       .on("change", () => {
         this.updateBitmapText(); // Update font size dynamically
+        this.saveOptionsToLocalStorage();
       });
 
     this.pane
       .addBinding(PARAMS, "format") // Add USD formatting toggle
       .on("change", () => {
         this.updateDisplayedText(); // Update text when toggled
+        this.saveOptionsToLocalStorage();
       });
 
     this.pane
@@ -236,9 +239,7 @@ class BitmapPreviewer {
         max: 30,
         step: 0.1,
       })
-      .on("change", () => {
-        this.updateBitmapText(); // Update font size dynamically
-      });
+      .on("change", () => this.saveOptionsToLocalStorage());
 
     // Add start and stop buttons
     this.pane.addButton({ title: "Start Tickup" }).on("click", () => {
@@ -260,7 +261,6 @@ class BitmapPreviewer {
         ease: "linear",
         onUpdate: () => {
           this.updateDisplayedText(); // Update the number during tick
-          console.log(this.bitmapText?.getBounds().width)
         },
       });
     }
@@ -274,115 +274,15 @@ class BitmapPreviewer {
     }
   }
 
-  private async performDigitTesting(): Promise<void> {
-    if (!this.bitmapText || !this.currentFontName) return;
-  
-    console.group("Arabic Digit Testing");
-  
-    const fontData = PIXI.BitmapFont.available[this.currentFontName];
-    if (!fontData) {
-      console.warn("Font data not found for the current loaded font.");
-      return;
-    }
-  
-    console.log("Font Data", fontData);
-  
-    // Maximum xAdvance is calculated for future use
-    let maxAdvance = 0;
-    for (let charCode in fontData.chars) {
-      maxAdvance = Math.max(maxAdvance, fontData.chars[charCode].xAdvance);
-    }
-    console.log("Max xAdvance:", maxAdvance);
-  
-    // Container for glyph adjustments
-    let kerningAdjusted = false;
-  
-    // Iterate through digit pairs from "10" to "99"
-    for (let number = 10; number < 100; number++) {
-      const testString = number.toString();
-      const [digit1, digit2] = testString.split("").map((c) => c.charCodeAt(0)); // Get char codes for each digit
-  
-      // Render the string and calculate bounds
-      this.bitmapText.text = testString;
-      this.drawBoundingBox();
-      this.app.renderer.render(this.app.stage);
-  
-      await this.sleep(24); // Pause for visualization (adjust duration as needed)
-  
-      const bounds = this.bitmapText.getBounds();
-  
-      console.log(
-        `%cString: '${testString}'`,
-        "color: lightblue; font-weight: bold;"
-      );
-      console.log(`    Bounds: ${JSON.stringify(bounds)}`);
-  
-      // Calculate expected width based on maximum advance
-      const expectedWidth = testString.length * maxAdvance;
-      console.log(`    Expected Width: ${expectedWidth}`);
-  
-      // Check the kerning between the two digits
-      const glyph1 = fontData.chars[digit1];
-      const glyph2 = fontData.chars[digit2];
-  
-      if (glyph1 && glyph2) {
-        const kerningValue = glyph1.kerning[digit2] || 0; // Get the current kerning value between digit1 and digit2
-        const renderedWidth = bounds.width;
-        const spacingBetweenDigits = Math.abs(renderedWidth - maxAdvance * 2);
-  
-        console.log(
-          `    Current Kerning (${testString}): ${kerningValue}, Spacing: ${spacingBetweenDigits}`
-        );
-  
-        // Adjust kerning if needed to reduce spacing inconsistency
-        if (spacingBetweenDigits > 1 || Math.abs(renderedWidth - expectedWidth) > 1) {
-          const newKerningValue = kerningValue + (expectedWidth - renderedWidth) / 2;
-  
-          // Set kerning so that digit pairs are visually balanced
-          glyph1.kerning[digit2] = newKerningValue;
-  
-          console.log(
-            `%cAdjusted kerning for pair '${testString}' (${digit1} -> ${
-              digit2
-            }) to: ${newKerningValue}`,
-            "color: yellow; font-weight: bold;"
-          );
-  
-          kerningAdjusted = true;
-        } else {
-          console.log(
-            `%cNo kerning adjustment needed for '${testString}'.`,
-            "color: green;"
-          );
-        }
-      } else {
-        console.warn(
-          `%cGlyph(s) missing for pair '${testString}'.`,
-          "color: red; font-weight: bold;"
-        );
-      }
-    }
-  
-    console.groupEnd();
-  
-    // Apply adjustments to the font data
-    if (kerningAdjusted) {
-      console.group("%cApplying Adjustments to Font Data", "color: orange;");
-      console.log(
-        "%cAdjustments have been made to kerning values between digit pairs.",
-        "color: orange; font-weight: bold;"
-      );
-      console.groupEnd();
-    }
-  
-    // Reset the text after testing
-    this.bitmapText.text = "";
-    this.updateBitmapText();
-    this.app.renderer.render(this.app.stage); // Clear the stage
+  private saveOptionsToLocalStorage(): void {
+    localStorage.setItem("tweakpane-options", JSON.stringify(this.options));
   }
-  
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+
+  private loadOptionsFromLocalStorage(): void {
+    const options = localStorage.getItem("tweakpane-options");
+    if (options) {
+      this.options = JSON.parse(options);
+    }
   }
 }
 
