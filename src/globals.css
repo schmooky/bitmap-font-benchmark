@@ -1,0 +1,96 @@
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap");
+@import "driver.js/dist/driver.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Monochrome (neutral) dark theme — shadcn token contract */
+@layer base {
+  :root {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 6.5%;
+    --card-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 44%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --radius: 0.6rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    @apply bg-background text-foreground font-mono antialiased;
+    overflow: hidden;
+    /* No ligatures: ASCII like -> and != must not render as arrow/symbol glyphs. */
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+}
+
+/* Thin monochrome scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 24%);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* driver.js — force it into the monochrome palette */
+.driver-popover {
+  background: hsl(0 0% 8%);
+  color: hsl(0 0% 98%);
+  border: 1px solid hsl(0 0% 18%);
+  border-radius: var(--radius);
+  font-family: "Fira Code", monospace;
+}
+.driver-popover-title {
+  font-size: 14px;
+}
+.driver-popover-description {
+  color: hsl(0 0% 70%);
+  font-size: 12.5px;
+}
+.driver-popover-progress-text {
+  color: hsl(0 0% 55%);
+}
+.driver-popover-arrow {
+  border-color: hsl(0 0% 8%);
+}
+.driver-popover-navigation-btns button,
+.driver-popover-close-btn {
+  background: hsl(0 0% 98%) !important;
+  color: hsl(0 0% 9%) !important;
+  text-shadow: none !important;
+  border-radius: calc(var(--radius) - 3px);
+  font-family: "Fira Code", monospace;
+}
+.driver-popover-close-btn {
+  background: transparent !important;
+  color: hsl(0 0% 60%) !important;
+}
